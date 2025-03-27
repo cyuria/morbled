@@ -4,10 +4,8 @@ use std::{
     path::{Path, PathBuf},
     time::Duration,
 };
-use systemd::bus::{Bus, BusName, InterfaceName, MemberName, ObjectPath};
 use tokio::{fs, fs::File, io::AsyncReadExt};
 use tokio_util::sync::CancellationToken;
-use utf8_cstr::Utf8CStr;
 
 pub struct Backlight {
     pub sysfs_path: PathBuf,
@@ -55,12 +53,12 @@ impl Backlight {
 
         let diff = (self.target - self.current).unsigned_abs();
 
-        let mut wait = 500 / diff;
+        let mut wait = 300 / diff;
         if wait < 10 {
             wait = 10;
         }
 
-        let step = (wait * diff + 499) / 500;
+        let step = (wait * diff) / 300 + 1;
 
         self.wait = Duration::from_millis(wait as u64);
         self.step = step as i32;
@@ -73,10 +71,14 @@ impl Backlight {
     pub async fn run_down(&mut self, token: CancellationToken) {
         while self.step.abs() < (self.target - self.current).abs() {
             self.current += self.step;
-            //if let Err(err) = self.write_sysfs("brightness", self.current).await {
-            //    error!("Encountered {} while trying to write brightness", err);
-            //};
-            if let Err(err) = self.write_sdbus(self.current).await {
+
+            #[cfg(feature = "sd_dbus")]
+            let write = self.write_sdbus(self.current);
+
+            #[cfg(not(feature = "sd_dbus"))]
+            let write = self.write_sysfs("brightness", self.current);
+
+            if let Err(err) = write.await {
                 error!("Encountered {} while trying to write brightness", err);
             };
             tokio::select! {
@@ -103,7 +105,11 @@ impl Backlight {
         Ok(())
     }
 
+    #[cfg(feature = "sd_dbus")]
     async fn write_sdbus(&mut self, value: i32) -> Result<(), Box<dyn Error>> {
+        use systemd::bus::{Bus, BusName, InterfaceName, MemberName, ObjectPath};
+        use utf8_cstr::Utf8CStr;
+
         let mut bus = Bus::default_system()?;
 
         let mut method = bus.new_method_call(

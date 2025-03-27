@@ -1,17 +1,17 @@
 [package]
 name = "morbled"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 
 [dependencies]
 async-std = "1.13.1"
-colog = "1.3.0"
+flexi_logger = { version = "0.29.8", default-features = false, features = ["async", "colors"] }
 futures = "0.3.31"
 log = "0.4.27"
-systemd = { version = "0.10.0", features = ["bus"] }
+systemd = { version = "0.10.0", features = ["bus"], optional = true }
 tokio = { version = "1.44.1", features = ["full"] }
 tokio-util = "0.7.14"
-utf8-cstr = "0.1.6"
+utf8-cstr = { version = "0.1.6", optional = true }
 
 [lib]
 name = "message"
@@ -24,3 +24,7 @@ path = "src/daemon.rs"
 [[bin]]
 name = "morblectl"
 path = "src/client.rs"
+
+[features]
+default = ["sd_dbus"]
+sd_dbus = ["dep:systemd", "dep:utf8-cstr"]

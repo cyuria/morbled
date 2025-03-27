@@ -79,7 +79,7 @@ impl Drop for BacklightStatus {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    colog::init();
+    flexi_logger::init();
 
     let socket = Path::new(env::var("XDG_RUNTIME_DIR")?.as_str()).join("morbled.socket");
 
