@@ -2,9 +2,10 @@
 
 The phonetic respelling of more backlight daemons.
 
-A lighting control daemon written in rust.
+A lighting control daemon written in rust targetting low bloat and the best
+possible out of the box, quality of life experience.
 
-Uses either systemd logind or sysfs directly.
+Uses either the systemd/logind dbus or sysfs directly to control brightness.
 
 ## Compiling and Installing
 
