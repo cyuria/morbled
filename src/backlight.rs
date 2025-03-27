@@ -4,8 +4,10 @@ use std::{
     path::{Path, PathBuf},
     time::Duration,
 };
+use systemd::bus::{Bus, BusName, InterfaceName, MemberName, ObjectPath};
 use tokio::{fs, fs::File, io::AsyncReadExt};
 use tokio_util::sync::CancellationToken;
+use utf8_cstr::Utf8CStr;
 
 pub struct Backlight {
     pub sysfs_path: PathBuf,
@@ -60,8 +62,6 @@ impl Backlight {
 
         let step = (wait * diff + 499) / 500;
 
-        println!("diff {} wait {} step {}", diff, wait, step);
-
         self.wait = Duration::from_millis(wait as u64);
         self.step = step as i32;
 
@@ -73,7 +73,10 @@ impl Backlight {
     pub async fn run_down(&mut self, token: CancellationToken) {
         while self.step.abs() < (self.target - self.current).abs() {
             self.current += self.step;
-            if let Err(err) = self.write_sysfs("brightness", self.current).await {
+            //if let Err(err) = self.write_sysfs("brightness", self.current).await {
+            //    error!("Encountered {} while trying to write brightness", err);
+            //};
+            if let Err(err) = self.write_sdbus(self.current).await {
                 error!("Encountered {} while trying to write brightness", err);
             };
             tokio::select! {
@@ -97,6 +100,26 @@ impl Backlight {
         let mut buf = value.to_string();
         buf.push('\n');
         fs::write(self.sysfs_path.join(component), buf).await?;
+        Ok(())
+    }
+
+    async fn write_sdbus(&mut self, value: i32) -> Result<(), Box<dyn Error>> {
+        let mut bus = Bus::default_system()?;
+
+        let mut method = bus.new_method_call(
+            BusName::from_bytes("org.freedesktop.login1\0".as_bytes()).unwrap(),
+            ObjectPath::from_bytes("/org/freedesktop/login1/session/auto\0".as_bytes()).unwrap(),
+            InterfaceName::from_bytes("org.freedesktop.login1.Session\0".as_bytes()).unwrap(),
+            MemberName::from_bytes("SetBrightness\0".as_bytes()).unwrap(),
+        )?;
+
+        let id = String::from(self.sysfs_path.file_name().unwrap().to_str().unwrap());
+        method.append(Utf8CStr::from_bytes("backlight\0".as_bytes()).unwrap())?;
+        method.append(Utf8CStr::from_bytes((id + "\0").as_bytes()).unwrap())?;
+        method.append(value as u32)?;
+
+        method.call(0)?;
+
         Ok(())
     }
 
