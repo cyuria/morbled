@@ -1,0 +1,7 @@
+[Unit]
+Description=Screen backlight daemon
+Requires=dbus
+
+[Service]
+Type=exec
+ExecStart=morbled

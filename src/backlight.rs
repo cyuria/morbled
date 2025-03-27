@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
     time::Duration,
 };
-use tokio::{fs, fs::File, io::AsyncReadExt};
+use tokio::{fs::File, io::AsyncReadExt};
 use tokio_util::sync::CancellationToken;
 
 pub struct Backlight {
@@ -53,12 +53,12 @@ impl Backlight {
 
         let diff = (self.target - self.current).unsigned_abs();
 
-        let mut wait = 300 / diff;
+        let mut wait = 400 / diff;
         if wait < 10 {
             wait = 10;
         }
 
-        let step = (wait * diff) / 300 + 1;
+        let step = (wait * diff) / 400 + 1;
 
         self.wait = Duration::from_millis(wait as u64);
         self.step = step as i32;
@@ -71,16 +71,8 @@ impl Backlight {
     pub async fn run_down(&mut self, token: CancellationToken) {
         while self.step.abs() < (self.target - self.current).abs() {
             self.current += self.step;
+            self.write().await;
 
-            #[cfg(feature = "sd_dbus")]
-            let write = self.write_sdbus(self.current);
-
-            #[cfg(not(feature = "sd_dbus"))]
-            let write = self.write_sysfs("brightness", self.current);
-
-            if let Err(err) = write.await {
-                error!("Encountered {} while trying to write brightness", err);
-            };
             tokio::select! {
                 _ = token.cancelled() => {
                     return;
@@ -89,11 +81,22 @@ impl Backlight {
             }
         }
         self.current = self.target;
-        if let Err(err) = self.write_sysfs("brightness", self.current).await {
+        self.write().await;
+    }
+
+    async fn write(&mut self) {
+        #[cfg(feature = "sd_dbus")]
+        let write = self.write_sdbus(self.current);
+
+        #[cfg(not(feature = "sd_dbus"))]
+        let write = self.write_sysfs("brightness", self.current);
+
+        if let Err(err) = write.await {
             error!("Encountered {} while trying to write brightness", err);
         };
     }
 
+    #[cfg(not(feature = "sd_dbus"))]
     async fn write_sysfs(
         &mut self,
         component: impl AsRef<Path>,
@@ -101,7 +104,7 @@ impl Backlight {
     ) -> Result<(), Box<dyn Error>> {
         let mut buf = value.to_string();
         buf.push('\n');
-        fs::write(self.sysfs_path.join(component), buf).await?;
+        tokio::fs::write(self.sysfs_path.join(component), buf).await?;
         Ok(())
     }
 

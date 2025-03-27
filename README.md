@@ -31,6 +31,19 @@ cargo install --path .
 cargo install --no-default-features --path .
 ```
 
+### Services and udev
+
+Some sample service files and udev rules are provided in the
+[service/](./service/) directory.
+
+If you are running morbled without systemd/logind, you will want to install
+the udev rules.
+
+Otherwise, a service file for systemd has also been provided.
+
+It is also possible to manually start the daemon by running the `morbled`
+executable.
+
 ## Running
 
 Ensure the morble dameon (`morbled`) is running, directly or via a service
