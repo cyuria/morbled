@@ -6,9 +6,9 @@ edition = "2024"
 [dependencies]
 async-std = "1.13.1"
 flexi_logger = { version = "0.29.8", default-features = false, features = ["async", "colors"] }
-futures = "0.3.31"
+futures = { version = "0.3.31", default-features = false, features = ["alloc"] }
 log = "0.4.27"
-systemd = { version = "0.10.0", features = ["bus"], optional = true }
+systemd = { version = "0.10.0", default-features = false, features = ["bus"], optional = true }
 tokio = { version = "1.44.1", features = ["full"] }
 tokio-util = "0.7.14"
 utf8-cstr = { version = "0.1.6", optional = true }

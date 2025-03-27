@@ -50,6 +50,11 @@ aims to have the best out of the box experience for backlight control, meaning
 someone can just install it, change two lines of a window manager config, and
 forget about it.
 
+Lastly, changing and fixing up documentation is always appreciated.
+Morbled desperately needs better man pages.
+
+Also a better command line interface would be pretty nice.
+
 ## Decisions
 
 A list of current design decisions and their justifications.
