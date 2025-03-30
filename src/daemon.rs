@@ -28,6 +28,9 @@ impl BacklightStatus {
 
     async fn fly(&mut self, new_target: i32) {
         self.token.cancel();
+        if self.backlight.lock().await.reload().await.is_err() {
+            error!("Could not reload backlight data from sysfs");
+        };
         self.backlight.lock().await.update_target(new_target);
 
         self.token = CancellationToken::new();
